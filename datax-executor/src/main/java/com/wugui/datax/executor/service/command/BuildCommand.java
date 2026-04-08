@@ -36,8 +36,17 @@ public class BuildCommand {
         // command process
         //"--loglevel=debug"
         List<String> cmdArr = new ArrayList<>();
-        cmdArr.add("python");
         String dataXHomePath = SystemUtils.getDataXHomePath();
+        // Get python interpreter path (from PYTHON_PATH or system property)
+        String pythonCmd = System.getProperty("python.path",
+            System.getenv("PYTHON_PATH"));
+        if (StringUtils.isNotEmpty(pythonCmd)) {
+            cmdArr.add(pythonCmd);
+        } else if (StringUtils.isNotEmpty(dataXHomePath)) {
+            cmdArr.add("python");
+        } else {
+            cmdArr.add("python");
+        }
         if (StringUtils.isNotEmpty(dataXHomePath)) {
             dataXPyPath = dataXHomePath.contains("bin") ? dataXHomePath + DEFAULT_DATAX_PY : dataXHomePath + "bin" + File.separator + DEFAULT_DATAX_PY;
         }

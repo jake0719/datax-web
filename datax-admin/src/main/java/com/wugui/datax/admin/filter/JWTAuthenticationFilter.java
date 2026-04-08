@@ -14,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
@@ -64,10 +65,13 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
     protected void successfulAuthentication(HttpServletRequest request,
                                             HttpServletResponse response,
                                             FilterChain chain,
-                                            Authentication authResult) throws IOException {
+                                            Authentication authResult) throws IOException, ServletException {
+        // 不调用父类的successfulAuthentication，避免响应被覆盖
+        // 手动设置SecurityContext
+        SecurityContextHolder.getContext().setAuthentication(authResult);
 
         JwtUser jwtUser = (JwtUser) authResult.getPrincipal();
-        boolean isRemember = rememberMe.get() == 1;
+        boolean isRemember = rememberMe.get() != null && rememberMe.get() == 1;
 
         String role = "";
         Collection<? extends GrantedAuthority> authorities = jwtUser.getAuthorities();
@@ -75,13 +79,18 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
             role = authority.getAuthority();
         }
 
-        String token = JwtTokenUtils.createToken(jwtUser.getId(),jwtUser.getUsername(), role, isRemember);
-        response.setHeader("token", JwtTokenUtils.TOKEN_PREFIX + token);
+        final String finalToken = JwtTokenUtils.createToken(jwtUser.getId(),jwtUser.getUsername(), role, isRemember);
+        final String[] finalRoles = role.split(SPLIT_COMMA);
+        response.setHeader("token", JwtTokenUtils.TOKEN_PREFIX + finalToken);
+        response.setContentType("application/json;charset=UTF-8");
         response.setCharacterEncoding("UTF-8");
-        Map<String, Object> maps = new HashMap<>();
-        maps.put("data", JwtTokenUtils.TOKEN_PREFIX + token);
-        maps.put("roles", role.split(SPLIT_COMMA));
-        response.getWriter().write(JSON.toJSONString(new ReturnT<>(maps)));
+
+        Map<String, Object> resultMap = new HashMap<>();
+        resultMap.put("data", JwtTokenUtils.TOKEN_PREFIX + finalToken);
+        resultMap.put("roles", finalRoles);
+        byte[] bytes = JSON.toJSONString(new ReturnT<>(resultMap)).getBytes("UTF-8");
+        response.getOutputStream().write(bytes);
+        response.getOutputStream().flush();
     }
 
     @Override

@@ -28,7 +28,11 @@ public class SystemUtils {
      */
     public static String getDataXHomePath() {
         if (StringUtils.isNotEmpty(DATAX_HOME)) return DATAX_HOME;
-        String dataXHome = System.getenv("DATAX_HOME");
+        // First check system property, then environment variable
+        String dataXHome = System.getProperty("datax.home");
+        if (StringUtils.isBlank(dataXHome)) {
+            dataXHome = System.getenv("DATAX_HOME");
+        }
         if (StringUtils.isBlank(dataXHome)) {
             //LOGGER.warn("DATAX_HOME 环境变量为NULL");
             return null;
